@@ -67,7 +67,7 @@ Then you can add that entity to a dashboard, and it'll look something like this:
 ![Screenshot of HDMI input in Home Assistant](ha-screenshot.png)
 
 ## Resilience model
-* The application deliberately crashes if the MQTT broker goes down - it relies on systemd to restart it appropriately
+* The application deliberately crashes if the MQTT broker goes down - my deployment relies on `systemd` to restart it appropriately
 
 ## TODO: 
 * Publish the `systemd` unit I use with this application
