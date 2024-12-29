@@ -18,7 +18,7 @@ So here's what I built, let me know if it's useful to you!
 ## Use
 1) Modify the configuration in `main.go`, specifically you will want to customise the broker address, topic, and serial port path for your specific setup
 2) Run it... `go run main.go`
-3) Keep it running in whatever toolchain you use (I use a `systemd` unit)
+3) If it works for you, compile it (`go build main.go`), and keep it running in whatever toolchain you use (I use a `systemd` unit)
 
 ## API
 
