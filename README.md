@@ -1,10 +1,10 @@
 # ATEN HDMI switcher "smart" bridge
 
-A small application for controlling ATEN HDMI switches via HTTP and MQTT
+A small application for controlling ATEN HDMI switches via HTTP and MQTT.
 
-So you bought a ATEN HDMI switcher which has RS232 because you want to turn it into something "smart" as part of your home automation... Congrats! I did the same!
+So you bought a ATEN HDMI switcher which has RS232 control because you want to turn it into something "smart" as part of your home automation... Congrats! I did the same!
 
-So here's what I built.
+So here's what I built, let me know if it's useful to you!
 
 ## Dependencies
 * Linux (Tested on Debian, other distributions will very likely work, good luck with any other OS)
@@ -46,6 +46,25 @@ For example, the following `mosquitto_pub` command sent to the same MQTT broker 
 ```
 mosquitto_pub -h 10.0.89.54 -t "hdmi-switch/input" -m "1"
 ```
+
+## Use in Home Assistant
+
+Unsurprisingly, I built this so I could control the HDMI switcher from [Home Assistant](https://www.home-assistant.io/). To integrate to Home Assistant, you can use the MQTT broker, and configure it something like this:
+
+```
+mqtt:
+  - number:
+      unique_id: "hdmi-switcher"
+      name: "HDMI Input"
+      mode: "slider"
+      command_topic: hdmi-switch/input
+      min: 1
+      max: 4
+```
+
+Then you can add that entity to a dashboard, and it'll look something like this:
+
+![Screenshot of HDMI input in Home Assistant](ha-screenshot.png)
 
 ## Resilience model
 * The application deliberately crashes if the MQTT broker goes down - it relies on systemd to restart it appropriately
