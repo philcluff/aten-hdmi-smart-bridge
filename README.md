@@ -18,7 +18,7 @@ So here's what I built, let me know if it's useful to you!
 ## Use
 1) Modify the configuration in `main.go`, specifically you will want to customise the broker address, topic, and serial port path for your specific setup
 2) Run it... `go run main.go`
-3) If it works for you, compile it (`go build main.go`), and keep it running in whatever toolchain you use (I use a `systemd` unit)
+3) If it works for you, compile it (`go build main.go`), and keep the output binary running in whatever toolchain you use (I use a `systemd` unit, there's an [example unit file here](hdmi-switcher.service))
 
 ## API
 
@@ -70,5 +70,4 @@ Then you can add that entity to a dashboard, and it'll look something like this:
 * The application deliberately crashes if the MQTT broker goes down - my deployment relies on `systemd` to restart it appropriately
 
 ## TODO: 
-* Publish the `systemd` unit I use with this application
 * Make configuration command line arguments
