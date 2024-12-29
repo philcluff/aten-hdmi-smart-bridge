@@ -27,7 +27,7 @@ So here's what I built, let me know if it's useful to you!
 The service exposes a simple HTTP API for controlling the input:
 
 ```
-// POST /input/{id}
+/input/{id}
 ```
 
 For example, the following `curl` command will switch to input 1: 
@@ -35,7 +35,7 @@ For example, the following `curl` command will switch to input 1:
 curl localhost:8080/input/1
 ```
 
-The HTTP verb does not matter.
+The HTTP verb used does not matter.
 
 ### MQTT
 
