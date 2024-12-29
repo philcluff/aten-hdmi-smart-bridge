@@ -1,0 +1,15 @@
+[Unit]
+Description=HDMI Switcher
+After=network-online.target
+Requires=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+User=whatever-user-you-want-to-use
+ExecStart=/path/to-compiled-go-binary/main
+
+[Install]
+WantedBy=multi-user.target

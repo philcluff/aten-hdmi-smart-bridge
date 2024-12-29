@@ -71,3 +71,4 @@ Then you can add that entity to a dashboard, and it'll look something like this:
 
 ## TODO: 
 * Publish the `systemd` unit I use with this application
+* Make configuration command line arguments

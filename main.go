@@ -74,7 +74,7 @@ func main() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 
-	fmt.Println("Shutting down.")
+	log.Println("Shutting down.")
 }
 
 // Send switch command to the HDMI switcher over serial
