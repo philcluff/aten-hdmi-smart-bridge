@@ -25,7 +25,7 @@ So here's what I built, let me know if it's useful to you!
 The application uses the golang `flag` library for parsing configuration, so you can [a variety of formats](https://pkg.go.dev/flag#hdr-Command_line_flag_syntax), for example to customise the serial path and http port:
 
 ```
-go run main.go --serial-device-path /dev/ttyUSB0 --http-port 8989
+go run main.go --serial-path /dev/ttyUSB0 --http-port 8989
 ```
 
 ### Full configuration options
