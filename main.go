@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,44 +16,47 @@ import (
 var port serial.Port
 
 func main() {
-	portName := "/dev/ttyUSB0"
-	baudRate := 19200
-	mqttBroker := "tcp://10.0.89.54:1883"
-	mqttTopic := "hdmi-switch/input"
-	mqttClientId := "hdmi-switcher"
+
+	// Parse command line arguments
+	serialPortPath := flag.String("serial-path", "/dev/ttyUSB0", "Path to the serial port")
+	mqttBroker := flag.String("mqtt-broker", "tcp://10.0.89.54:1883", "Connection string for the MQTT broker, including protocol and port")
+	mqttTopic := flag.String("mqtt-topic", "hdmi-switch/input", "MQTT topic to subscribe to for HDMI input switching")
+	mqttClientId := flag.String("mqtt-client-id", "hdmi-switcher", "MQTT client id")
+	httpPort := flag.String("http-port", "8080", "Port for the HTTP server to listen on")
+	flag.Parse()
 
 	// Configure & open the serial port
 	mode := &serial.Mode{
-		BaudRate: baudRate,
+		BaudRate: 19200,
 		Parity:   serial.NoParity,
 		StopBits: serial.OneStopBit,
 		DataBits: 8,
 	}
 
-	localPort, err := serial.Open(portName, mode)
+	localPort, err := serial.Open(*serialPortPath, mode)
 	port = localPort
 	if err != nil {
 		log.Fatalf("Failed to open serial port: %v", err)
 	}
 	defer port.Close()
-	log.Printf("Connected to serial port %s successfully", portName)
+	log.Printf("Connected to serial port %s successfully", *serialPortPath)
 
 	// Setup a HTTP listener for HTTP based control
 	http.HandleFunc("/input/{id}", input)
 	go func() {
-		log.Println("Listening on port 8080...")
-		err := http.ListenAndServe(":8080", nil)
+		log.Printf("Starting HTTP server on port %s\n", *httpPort)
+		err := http.ListenAndServe(fmt.Sprintf(":%s", *httpPort), nil)
 		if err != nil {
 			panic("ListenAndServe: " + err.Error())
 		}
 	}()
 
 	// MQTT client options
-	opts := mqtt.NewClientOptions().AddBroker(mqttBroker).SetConnectionLostHandler(func(client mqtt.Client, err error) {
+	opts := mqtt.NewClientOptions().AddBroker(*mqttBroker).SetConnectionLostHandler(func(client mqtt.Client, err error) {
 		// Custom handler for connection lost - just exit and assume systemd will restart the service
 		log.Fatalf("Connection to MQTT broker lost: %v", err)
 	})
-	opts.SetClientID(mqttClientId)
+	opts.SetClientID(*mqttClientId)
 
 	// Create and start the MQTT client for MQTT based control
 	client := mqtt.NewClient(opts)
@@ -63,7 +67,7 @@ func main() {
 	log.Println("Connected to MQTT broker")
 
 	// Subscribe to the HDMI switching topic
-	client.Subscribe(mqttTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
+	client.Subscribe(*mqttTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
 		id := string(msg.Payload())
 		log.Printf("Received MQTT input: %s", id)
 		sendSerialCommand(inputIdToCommand(id))

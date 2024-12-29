@@ -16,9 +16,28 @@ So here's what I built, let me know if it's useful to you!
 * A USB to Serial convertor - [I'm using this generic one from UGREEN](https://www.amazon.co.uk/dp/B00QUZY4UG) without issues
 
 ## Use
-1) Modify the configuration in `main.go`, specifically you will want to customise the broker address, topic, and serial port path for your specific setup
+1) Work out what [configuration](#Configuration) you need to work in your setup, specifically you will want to customise the broker address, topic, and serial port path for your specific setup
 2) Run it... `go run main.go`
 3) If it works for you, compile it (`go build main.go`), and keep the output binary running in whatever toolchain you use (I use a `systemd` unit, there's an [example unit file here](hdmi-switcher.service))
+
+## Configuration
+
+The application uses the golang `flag` library for parsing configuration, so you can [a variety of formats](https://pkg.go.dev/flag#hdr-Command_line_flag_syntax), for example to customise the serial path and http port:
+
+```
+go run main.go --serial-device-path /dev/ttyUSB0 --http-port 8989
+```
+
+### Full configuration options
+
+|| Configuration || Description || Default Value ||
+| `serial-path` | Path to the serial port | `/dev/ttyUSB0` |
+| `mqtt-broker` | Address of the MQTT broker | `tcp://localhost:1883` |
+| `mqtt-topic` | MQTT topic to listen for input changes | `hdmi-switch/input` |
+| `mqtt-client-id` | Client ID for the MQTT connection | `hdmi-switcher` |
+| `http-port` | Port for the HTTP server to listen on | `8080` |
+
+The default configuration is unlikely to work for your personal setup, you'll very likely want to use something custom.
 
 ## API
 
