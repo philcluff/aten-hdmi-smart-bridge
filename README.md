@@ -30,7 +30,8 @@ go run main.go --serial-device-path /dev/ttyUSB0 --http-port 8989
 
 ### Full configuration options
 
-|| Configuration || Description || Default Value ||
+| Configuration | Description | Default Value |
+|-----|-----|-----|
 | `serial-path` | Path to the serial port | `/dev/ttyUSB0` |
 | `mqtt-broker` | Address of the MQTT broker | `tcp://localhost:1883` |
 | `mqtt-topic` | MQTT topic to listen for input changes | `hdmi-switch/input` |
