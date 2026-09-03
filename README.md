@@ -8,7 +8,7 @@ So here's what I built, let me know if it's useful to you!
 
 ## Dependencies
 * Linux (Tested on Debian, other distributions will very likely work, good luck with any other OS)
-* Go >= 1.22 ([This application uses the new path params routing functions](https://www.willem.dev/articles/url-path-parameters-in-routes/))
+* Go >= 1.23 (there's a [`mise.toml`](mise.toml) if you use [mise](https://mise.jdx.dev/); [this application uses the new path params routing functions](https://www.willem.dev/articles/url-path-parameters-in-routes/))
 
 ## Hardware Required
 * [ATEN VS481C](https://www.aten.com/gb/en/products/professional-audiovideo/video-switches/vs481c/) ([Manual](https://assets.aten.com/product/manual/vs481c_um_w_2021-06-10.pdf)) - Other ATEN switches seem to have the same interface, but YMMV
@@ -55,7 +55,7 @@ For example, the following `curl` command will switch to input 1:
 curl localhost:8080/input/1
 ```
 
-The HTTP verb used does not matter.
+The HTTP verb used does not matter. Invalid input IDs return a `400 Bad Request`. If the switch does not acknowledge the command within 500ms, or rejects it, the response is a `502 Bad Gateway` with the reason in the body.
 
 ### MQTT
 
@@ -88,6 +88,4 @@ Then you can add that entity to a dashboard, and it'll look something like this:
 
 ## Resilience model
 * The application deliberately crashes if the MQTT broker goes down - my deployment relies on `systemd` to restart it appropriately
-
-## TODO: 
-* Make configuration command line arguments
+* Every command waits for the switch's `Command OK` acknowledgement and logs the outcome, so a dead cable or powered-off switch shows up in the logs as "no response from switch" rather than silently doing nothing

@@ -1,19 +1,29 @@
 package main
 
 import (
+	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
+	"sync"
 	"syscall"
+	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"go.bug.st/serial"
 )
 
-var port serial.Port
+const responseTimeout = 500 * time.Millisecond
+
+var (
+	port      serial.Port
+	portMutex sync.Mutex
+)
 
 func main() {
 
@@ -33,12 +43,15 @@ func main() {
 		DataBits: 8,
 	}
 
-	localPort, err := serial.Open(*serialPortPath, mode)
-	port = localPort
+	var err error
+	port, err = serial.Open(*serialPortPath, mode)
 	if err != nil {
 		log.Fatalf("Failed to open serial port: %v", err)
 	}
 	defer port.Close()
+	if err := port.SetReadTimeout(responseTimeout); err != nil {
+		log.Fatalf("Failed to set serial read timeout: %v", err)
+	}
 	log.Printf("Connected to serial port %s successfully", *serialPortPath)
 
 	// Setup a HTTP listener for HTTP based control
@@ -70,7 +83,11 @@ func main() {
 	client.Subscribe(*mqttTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
 		id := string(msg.Payload())
 		log.Printf("Received MQTT input: %s", id)
-		sendSerialCommand(inputIdToCommand(id))
+		command, ok := inputIdToCommand(id)
+		if !ok {
+			return
+		}
+		sendSerialCommand(command)
 	})
 
 	// Wait for interrupt signal to gracefully shutdown the application
@@ -81,17 +98,54 @@ func main() {
 	log.Println("Shutting down")
 }
 
-// Send switch command to the HDMI switcher over serial
-func sendSerialCommand(command string) {
-	if command == "" {
-		log.Printf("Skipping empty command\n")
-		return
+// Send a command to the HDMI switcher over serial and wait for its acknowledgement
+func sendSerialCommand(command string) error {
+	portMutex.Lock()
+	defer portMutex.Unlock()
+
+	if err := port.ResetInputBuffer(); err != nil {
+		log.Printf("Failed to reset serial input buffer: %v\n", err)
 	}
-	_, err := port.Write([]byte(command))
+
+	if _, err := port.Write([]byte(command)); err != nil {
+		log.Printf("Failed to send command %q: %v\n", command, err)
+		return err
+	}
+
+	response, err := readResponseLine()
 	if err != nil {
-		log.Printf("Failed to send command: %v\n", err)
-	} else {
-		log.Printf("Command %q sent successfully\n", command)
+		log.Printf("Command %q sent but %v\n", command, err)
+		return err
+	}
+	if !strings.HasSuffix(response, "Command OK") {
+		err := fmt.Errorf("switch rejected command: %q", response)
+		log.Printf("Command %q sent but %v\n", command, err)
+		return err
+	}
+
+	log.Printf("Command %q acknowledged: %q\n", command, response)
+	return nil
+}
+
+// Read from the serial port until a line terminator arrives or the read timeout elapses
+func readResponseLine() (string, error) {
+	var response []byte
+	buffer := make([]byte, 64)
+	for {
+		n, err := port.Read(buffer)
+		if err != nil {
+			return "", fmt.Errorf("failed reading response: %w", err)
+		}
+		if n == 0 {
+			if len(response) == 0 {
+				return "", errors.New("no response from switch within " + responseTimeout.String())
+			}
+			return "", fmt.Errorf("incomplete response from switch: %q", response)
+		}
+		response = append(response, buffer[:n]...)
+		if bytes.HasSuffix(response, []byte("\r\n")) {
+			return strings.TrimSpace(string(response)), nil
+		}
 	}
 }
 
@@ -100,24 +154,32 @@ func input(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 	log.Printf("Received input via http: %s\n", id)
 
-	// Send the switch command
-	sendSerialCommand(inputIdToCommand(id))
+	command, ok := inputIdToCommand(id)
+	if !ok {
+		http.Error(w, fmt.Sprintf("Invalid input: %s", id), http.StatusBadRequest)
+		return
+	}
+
+	if err := sendSerialCommand(command); err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
 	fmt.Fprintf(w, "OK\n")
 }
 
 // Map input ID to HDMI switcher command
-func inputIdToCommand(input string) string {
+func inputIdToCommand(input string) (string, bool) {
 	switch input {
 	case "1":
-		return "sw i01\r\n"
+		return "sw i01\r\n", true
 	case "2":
-		return "sw i02\r\n"
+		return "sw i02\r\n", true
 	case "3":
-		return "sw i03\r\n"
+		return "sw i03\r\n", true
 	case "4":
-		return "sw i04\r\n"
+		return "sw i04\r\n", true
 	default:
 		log.Printf("Invalid input received: %s", input)
-		return ""
+		return "", false
 	}
 }
