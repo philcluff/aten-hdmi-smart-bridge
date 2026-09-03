@@ -1,4 +1,4 @@
-module serialport-write
+module github.com/philcluff/aten-hdmi-smart-bridge
 
 go 1.23.4
 
