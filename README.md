@@ -4,7 +4,7 @@ So you bought an ATEN HDMI switcher which has RS232 control because you want to 
 
 This is what I built: an ESP32 running [ESPHome](https://esphome.io/) that controls an ATEN VS481C over its RS232 port from Home Assistant. Let me know if it's useful to you!
 
-![The finished bridge: a small black 3D printed box with a DB9 socket on the end and vent slots in the lid, held in a hand](build-photo.jpg)
+<img src="build-photo.jpg" width="480" alt="The finished bridge: a small black 3D printed box with a DB9 socket on the end and vent slots in the lid, held in a hand">
 
 ![Home Assistant card with a Connected status row and four input buttons: Apple TV, Xbox, PS5 and Fire Stick, with Xbox highlighted](ha-screenshot.png)
 
