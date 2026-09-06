@@ -29,7 +29,8 @@ jobs:
           restore-keys: esphome-${{ runner.os }}-
 
       - name: Placeholder secrets
-        run: printf 'wifi_ssid: "ci"\nwifi_password: "ci"\n' > secrets.yaml
+        run: |
+          printf 'wifi_ssid: "ci"\nwifi_password: "ci"\n' > secrets.yaml
 
       - name: Validate
         run: esphome config hdmi-switch.yaml
