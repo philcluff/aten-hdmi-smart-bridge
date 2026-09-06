@@ -1,0 +1,38 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  esphome:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install ESPHome
+        run: pip install esphome==2026.8.1
+
+      - name: Cache toolchains
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            .esphome
+          key: esphome-${{ runner.os }}-${{ hashFiles('hdmi-switch.yaml') }}
+          restore-keys: esphome-${{ runner.os }}-
+
+      - name: Placeholder secrets
+        run: printf 'wifi_ssid: "ci"\nwifi_password: "ci"\n' > secrets.yaml
+
+      - name: Validate
+        run: esphome config hdmi-switch.yaml
+
+      - name: Compile
+        run: esphome compile hdmi-switch.yaml
