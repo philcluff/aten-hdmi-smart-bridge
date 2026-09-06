@@ -1,5 +1,8 @@
 # ESPHome build notes
 
+> [!NOTE]
+> This file was written by Claude during the build, from research, datasheets, a USB bus trace of the original setup, and the bench testing. The numbers were checked against the real parts where noted, but treat it as working notes rather than a spec.
+
 Reference for the ESP32 build described in the [README](README.md): what was learned about the switch, the wiring gotchas, the ESPHome config, and the case constraints. Built and working since 2026-09-05.
 
 ## What we know about the switch
@@ -14,7 +17,7 @@ Confirmed from a USB bus trace of the original Pi setup and the VS481C manual:
 | Acknowledgement | The command echoed back followed by ` Command OK\r\n`, e.g. `sw i03 Command OK\r\n`, within about 20 ms |
 | Rejection | The command echoed back followed by ` Command incorrect\r\n` |
 | Output on/off | `sw on`, `sw off` |
-| Switch mode | `swmode next`, `swmode i0N priority`, `swmode off`, `swmode pod on|off` |
+| Switch mode | `swmode next`, `swmode i0N priority`, `swmode off`, `swmode pod on`, `swmode pod off` |
 | Read settings | `read` - returns six lines, see below |
 
 Captured from the real unit (firmware V1.1.104), the `read` reply is:

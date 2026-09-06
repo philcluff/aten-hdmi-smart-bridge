@@ -1,6 +1,10 @@
-# ATEN HDMI switch bridge
+# ATEN HDMI switcher "smart" bridge
 
-Control an ATEN VS481C HDMI switch over its RS232 port from Home Assistant, using an ESP32 running [ESPHome](https://esphome.io/).
+So you bought an ATEN HDMI switcher which has RS232 control because you want to turn it into something "smart" as part of your home automation... Congrats! I did the same!
+
+This is what I built: an ESP32 running [ESPHome](https://esphome.io/) that controls an ATEN VS481C over its RS232 port from Home Assistant. Let me know if it's useful to you!
+
+![Home Assistant card with a Connected status row and four input buttons: Apple TV, Xbox, PS5 and Fire Stick, with Xbox highlighted](ha-screenshot.png)
 
 The switch acknowledges every command and can be polled for its state, so this shows the input that is *actually* selected, including changes made from the IR remote or the front panel, and Home Assistant gets four buttons rather than a slider. Two LEDs on the case say whether it's connected and whether the switch is answering.
 
@@ -61,28 +65,33 @@ What it does:
 
 ## Home Assistant
 
-Add the device through the ESPHome integration; it's discovered automatically. Then put a row of buttons in whatever entities card the room uses:
+Add the device through the ESPHome integration; it's discovered automatically. Then a card like this, or the same `buttons` row dropped into whatever entities card the room already uses:
 
 ```yaml
-  - type: section
-    label: HDMI Input
+type: entities
+title: HDMI
+state_color: true
+show_header_toggle: false
+entities:
+  - entity: binary_sensor.hdmi_switch_switch_responding
+    name: Switch
   - type: buttons
     entities:
       - entity: switch.hdmi_switch_input_1
-        name: Input 1
-        icon: mdi:numeric-1-box
+        name: Apple TV
+        icon: mdi:apple
       - entity: switch.hdmi_switch_input_2
         name: Xbox
         icon: mdi:microsoft-xbox
       - entity: switch.hdmi_switch_input_3
-        name: Input 3
-        icon: mdi:numeric-3-box
+        name: PS5
+        icon: mdi:sony-playstation
       - entity: switch.hdmi_switch_input_4
         name: Fire Stick
         icon: mdi:fire
 ```
 
-With `state_color: true` on the card, the active input lights up. Worth adding `binary_sensor.hdmi_switch_switch_responding` to the card, or an automation that notifies you when it goes off.
+That's the card in the screenshot above. `state_color: true` is what lights the active input, and the status row is the "cable fell out" alarm; an automation that notifies when it goes off is worth having.
 
 ## Serial protocol
 
@@ -92,7 +101,7 @@ With `state_color: true` on the card, the active input lights up. Worth adding `
 |---|---|
 | `sw i01` to `sw i04` | Select input |
 | `sw on`, `sw off` | Output on or off |
-| `swmode next`, `swmode i0N priority`, `swmode off`, `swmode pod on|off` | Auto-switch modes |
+| `swmode next`, `swmode i0N priority`, `swmode off`, `swmode pod on`, `swmode pod off` | Auto-switch modes |
 | `read` | Reports the active input, output state, mode, POD mode and firmware, one per line |
 
 The `read` reply from firmware V1.1.104 is
