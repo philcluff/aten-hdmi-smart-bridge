@@ -30,7 +30,7 @@ jobs:
 
       - name: Placeholder secrets
         run: |
-          printf 'wifi_ssid: "ci"\nwifi_password: "ci"\n' > secrets.yaml
+          printf 'wifi_ssid: "ci-placeholder"\nwifi_password: "ci-placeholder"\n' > secrets.yaml
 
       - name: Validate
         run: esphome config hdmi-switch.yaml
