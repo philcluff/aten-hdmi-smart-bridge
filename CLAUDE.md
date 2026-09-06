@@ -11,6 +11,8 @@ An ESPHome config for an ESP32 that bridges an ATEN VS481C HDMI switch's RS232 p
 - `hdmi-switch.yaml` - the ESPHome config; this is the product
 - `esphome-build.md` - protocol notes, wiring gotchas, config outline, case constraints, sources
 - `secrets.yaml` - Wi-Fi credentials for ESPHome, gitignored; never commit it or paste its contents
+- `requirements.txt` - pins the ESPHome version used locally and in CI
+- `.github/workflows/build.yml` - CI: validates and compiles the config on PRs and pushes to main, with placeholder secrets
 
 ## Build and run
 
@@ -23,7 +25,7 @@ esphome run hdmi-switch.yaml --device hdmi-switch.local          # OTA flash the
 esphome logs hdmi-switch.yaml --device hdmi-switch.local         # stream logs
 ```
 
-`esphome` is installed locally. Build output goes to `.esphome/`, which is gitignored. Always validate and compile before declaring a config change done; the device is in daily use, so only flash when the user asks.
+`esphome` is installed locally at the version in `requirements.txt`. Build output goes to `.esphome/`, which is gitignored. Always validate and compile before declaring a config change done; the device is in daily use, so only flash when the user asks.
 
 There are no tests.
 
