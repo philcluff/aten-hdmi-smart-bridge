@@ -21,7 +21,7 @@ This replaced an earlier Raspberry Pi and Go daemon design; see [Legacy](#legacy
 | HW-044 MAX3232 module, female DB9 | The common small blue RS232-to-TTL board |
 | DB9 male-to-male **null modem** cable | Must be crossover. Both the switch and the module transmit on pin 2 |
 | 2 × 3 mm LEDs, green and red | Green through 220 Ω, red through 330 Ω |
-| USB-C power supply | A wall adapter, not a TV USB port that switches off with the telly |
+| USB-C power supply | A wall adapter, not a TV USB port that switches off with the TV |
 | 3D printed case, PETG | Designed in Fusion 360, not in this repo. Constraints in [esphome-build.md](esphome-build.md#case) |
 
 ## Wiring
