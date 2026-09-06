@@ -1,91 +1,113 @@
-# ATEN HDMI switcher "smart" bridge
+# ATEN HDMI switch bridge
 
-A small application for controlling ATEN HDMI switches via HTTP and MQTT.
+Control an ATEN VS481C HDMI switch over its RS232 port from Home Assistant, using an ESP32 running [ESPHome](https://esphome.io/).
 
-So you bought a ATEN HDMI switcher which has RS232 control because you want to turn it into something "smart" as part of your home automation... Congrats! I did the same!
+The switch acknowledges every command and can be polled for its state, so this shows the input that is *actually* selected, including changes made from the IR remote or the front panel, and Home Assistant gets four buttons rather than a slider. Two LEDs on the case say whether it's connected and whether the switch is answering.
 
-So here's what I built, let me know if it's useful to you!
+This replaced an earlier Raspberry Pi and Go daemon design; see [Legacy](#legacy) at the bottom.
 
-## Dependencies
-* Linux (Tested on Debian, other distributions will very likely work, good luck with any other OS)
-* Go >= 1.23 (there's a [`mise.toml`](mise.toml) if you use [mise](https://mise.jdx.dev/); [this application uses the new path params routing functions](https://www.willem.dev/articles/url-path-parameters-in-routes/))
+## Hardware
 
-## Hardware Required
-* [ATEN VS481C](https://www.aten.com/gb/en/products/professional-audiovideo/video-switches/vs481c/) ([Manual](https://assets.aten.com/product/manual/vs481c_um_w_2021-06-10.pdf)) - Other ATEN switches seem to have the same interface, but YMMV
-* A generic Linux box to run this application on - I use it on a [Raspberry Pi Zero 2 W](https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/) without issues
-* A USB to Serial convertor - [I'm using this generic one from UGREEN](https://www.amazon.co.uk/dp/B00QUZY4UG) without issues
+| Part | Notes |
+|---|---|
+| [ATEN VS481C](https://www.aten.com/gb/en/products/professional-audiovideo/video-switches/vs481c/) | Other ATEN switches with the `sw i0N` command set should work too |
+| ESP32-WROOM-32 devkit, 30-pin, USB-C | Any classic ESP32 devkit. Wires soldered to the pin tails, board mounted upside down |
+| HW-044 MAX3232 module, female DB9 | The common small blue RS232-to-TTL board |
+| DB9 male-to-male **null modem** cable | Must be crossover. Both the switch and the module transmit on pin 2 |
+| 2 × 3 mm LEDs, green and red | Green through 220 Ω, red through 330 Ω |
+| USB-C power supply | A wall adapter, not a TV USB port that switches off with the telly |
+| 3D printed case, PETG | Designed in Fusion 360, not in this repo. Constraints in [esphome-build.md](esphome-build.md#case) |
 
-## Use
-1) Work out what [configuration](#Configuration) you need to work in your setup, specifically you will want to customise the broker address, topic, and serial port path for your specific setup
-2) Run it... `go run main.go`
-3) If it works for you, compile it (`go build main.go`), and keep the output binary running in whatever toolchain you use (I use a `systemd` unit, there's an [example unit file here](hdmi-switcher.service))
+## Wiring
 
-## Configuration
+| From | To |
+|---|---|
+| Module VCC | ESP32 3V3 |
+| Module GND | ESP32 GND |
+| Module TXD | ESP32 GPIO17 |
+| Module RXD | ESP32 GPIO16 |
+| Green LED, long leg via 220 Ω | ESP32 GPIO25 |
+| Red LED, long leg via 330 Ω | ESP32 GPIO26 |
+| LED short legs | ESP32 GND |
+| Module DB9 | Switch RS232 port, via the null modem cable |
 
-The application uses the golang `flag` library for parsing configuration, so you can [a variety of formats](https://pkg.go.dev/flag#hdr-Command_line_flag_syntax), for example to customise the serial path and http port:
+If the switch never answers, swap TXD and RXD at the module before suspecting anything else; the labelling on those boards is inconsistent.
 
-```
-go run main.go --serial-path /dev/ttyUSB0 --http-port 8989
-```
+## Firmware
 
-### Full configuration options
-
-| Configuration | Description | Default Value |
-|-----|-----|-----|
-| `serial-path` | Path to the serial port | `/dev/ttyUSB0` |
-| `mqtt-broker` | Address of the MQTT broker | `tcp://10.0.89.54:1883` |
-| `mqtt-topic` | MQTT topic to listen for input changes | `hdmi-switch/input` |
-| `mqtt-client-id` | Client ID for the MQTT connection | `hdmi-switcher` |
-| `http-port` | Port for the HTTP server to listen on | `8080` |
-
-The default configuration is unlikely to work for your personal setup, you'll very likely want to use something custom.
-
-## API
-
-### HTTP
-
-The service exposes a simple HTTP API for controlling the input:
+The whole thing is [`hdmi-switch.yaml`](hdmi-switch.yaml). Create `secrets.yaml` next to it with your `wifi_ssid` and `wifi_password` (it's gitignored), then:
 
 ```
-/input/{id}
+esphome run hdmi-switch.yaml --device /dev/cu.usbserial-0001   # first flash, over USB
+esphome run hdmi-switch.yaml --device hdmi-switch.local          # every flash after that, over the air
+esphome logs hdmi-switch.yaml --device hdmi-switch.local         # watch it work
 ```
 
-For example, the following `curl` command will switch to input 1: 
+What it does:
+
+- Talks to the switch at 19200 8N1 on UART2.
+- Exposes four switch entities, **Input 1** to **Input 4**. Each is on only while that input is the active one; turning one on sends the command, turning one off does nothing.
+- After every command it waits for the switch's `Command OK` echo, and resends once if nothing comes back within 600 ms.
+- Polls the switch with `read` every 30 seconds, held off for 3 seconds after any command so the two can't collide, and updates the active input from the reply.
+- Exposes **Switch Responding**, a connectivity sensor that goes off if the switch hasn't replied to anything for 90 seconds. This is the "cable fell out" alarm.
+- Exposes **Last Switch Response** as a text sensor for debugging, and a **Restart** button.
+- Drives the two LEDs by PWM, green at full and red at half, balanced on the bench:
+
+| LED | Meaning |
+|---|---|
+| Green steady | Powered, Wi-Fi up, Home Assistant connected |
+| Green blinking | Powered but no Home Assistant connection |
+| Red on | The switch hasn't replied for 90 seconds |
+
+## Home Assistant
+
+Add the device through the ESPHome integration; it's discovered automatically. Then put a row of buttons in whatever entities card the room uses:
+
+```yaml
+  - type: section
+    label: HDMI Input
+  - type: buttons
+    entities:
+      - entity: switch.hdmi_switch_input_1
+        name: Input 1
+        icon: mdi:numeric-1-box
+      - entity: switch.hdmi_switch_input_2
+        name: Xbox
+        icon: mdi:microsoft-xbox
+      - entity: switch.hdmi_switch_input_3
+        name: Input 3
+        icon: mdi:numeric-3-box
+      - entity: switch.hdmi_switch_input_4
+        name: Fire Stick
+        icon: mdi:fire
 ```
-curl localhost:8080/input/1
-```
 
-The HTTP verb used does not matter. Invalid input IDs return a `400 Bad Request`. If the switch does not acknowledge the command within 500ms, or rejects it, the response is a `502 Bad Gateway` with the reason in the body.
+With `state_color: true` on the card, the active input lights up. Worth adding `binary_sensor.hdmi_switch_switch_responding` to the card, or an automation that notifies you when it goes off.
 
-### MQTT
+## Serial protocol
 
-The service listens for messages on the specified topic, simply containing the requested input ID.
+19200 baud, 8 data bits, no parity, 1 stop bit, no flow control. Commands end in `\r\n`. The switch echoes each command followed by ` Command OK` or ` Command incorrect`.
 
-For example, the following `mosquitto_pub` command sent to the same MQTT broker that the application is connected to, will switch to input 1:
+| Command | Effect |
+|---|---|
+| `sw i01` to `sw i04` | Select input |
+| `sw on`, `sw off` | Output on or off |
+| `swmode next`, `swmode i0N priority`, `swmode off`, `swmode pod on|off` | Auto-switch modes |
+| `read` | Reports the active input, output state, mode, POD mode and firmware, one per line |
 
-```
-mosquitto_pub -h 10.0.89.54 -t "hdmi-switch/input" -m "1"
-```
-
-## Use in Home Assistant
-
-Unsurprisingly, I built this so I could control the HDMI switcher from [Home Assistant](https://www.home-assistant.io/). To integrate to Home Assistant, you can use the MQTT broker, and configure it something like this:
+The `read` reply from firmware V1.1.104 is
 
 ```
-mqtt:
-  - number:
-      unique_id: "hdmi-switcher"
-      name: "HDMI Input"
-      mode: "slider"
-      command_topic: hdmi-switch/input
-      min: 1
-      max: 4
+read Command OK
+Input: port  1
+Output: ON
+Mode: NEXT
+Pod: OFF
+F/W: V1.1.104
 ```
 
-Then you can add that entity to a dashboard, and it'll look something like this:
+with two spaces before the port number and `\r\r\n` line endings after the second line. More detail, including the DB9 crossover explanation and case dimensions, in [esphome-build.md](esphome-build.md).
 
-![Screenshot of HDMI input in Home Assistant](ha-screenshot.png)
+## Legacy
 
-## Resilience model
-* The application deliberately crashes if the MQTT broker goes down - my deployment relies on `systemd` to restart it appropriately
-* Every command waits for the switch's `Command OK` acknowledgement and logs the outcome, so a dead cable or powered-off switch shows up in the logs as "no response from switch" rather than silently doing nothing
+The original version was a Go daemon on a Raspberry Pi with a USB-to-RS232 adapter, listening on HTTP and MQTT. It's on the [`legacy`](../../tree/legacy) branch if you want it.
