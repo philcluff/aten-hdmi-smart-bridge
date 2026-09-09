@@ -33,6 +33,9 @@ globals:
   - id: last_command_ms
     type: uint32_t
     initial_value: "0"
+  - id: last_published_line
+    type: std::string
+    initial_value: '""'
 
 uart:
   id: aten
@@ -59,11 +62,17 @@ uart:
               continue;
             }
             id(last_reply_ms) = millis();
-            id(last_response).publish_state(line);
-            if (line.rfind("Input: port", 0) == 0) {
+            bool is_input = line.rfind("Input: port", 0) == 0;
+            bool is_ack = line.rfind("sw i0", 0) == 0 && line.find("Command OK") != std::string::npos;
+            bool is_reject = line.find("Command incorrect") != std::string::npos;
+            if (is_input) {
               id(current_input) = line.back() - '0';
-            } else if (line.rfind("sw i0", 0) == 0 && line.find("Command OK") != std::string::npos) {
+            } else if (is_ack) {
               id(current_input) = line[5] - '0';
+            }
+            if ((is_input || is_ack || is_reject) && line != id(last_published_line)) {
+              id(last_published_line) = line;
+              id(last_response).publish_state(line);
             }
           }
           id(refresh_leds).execute();

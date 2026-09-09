@@ -56,7 +56,7 @@ What it does:
 - After every command it waits for the switch's `Command OK` echo, and resends once if nothing comes back within 600 ms.
 - Polls the switch with `read` every 30 seconds, held off for 3 seconds after any command so the two can't collide, and updates the active input from the reply.
 - Exposes **Switch Responding**, a connectivity sensor that goes off if the switch hasn't replied to anything for 90 seconds. This is the "cable fell out" alarm.
-- Exposes **Last Switch Response** as a text sensor for debugging, and a **Restart** button.
+- Exposes **Last Switch Response** as a text sensor for debugging. It only publishes command acknowledgements, rejections and the active-input line of a `read` reply, and only when the text differs from the last one published, so the 30-second poll doesn't fill the Home Assistant logbook. Also a **Restart** button.
 - Drives the two LEDs by PWM, green at full and red at half, balanced on the bench:
 
 | LED | Meaning |

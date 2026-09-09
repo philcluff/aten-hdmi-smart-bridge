@@ -54,7 +54,7 @@ LEDs: green on GPIO25 through 220 Ω, red on GPIO26 through 330 Ω, long legs to
 
 [`hdmi-switch.yaml`](hdmi-switch.yaml) is the source of truth. In outline:
 
-- `uart` on GPIO17/GPIO16 at 19200. A debug sequence receives each chunk, splits it into lines, records the time of every reply, publishes each line to the `Last Switch Response` text sensor, and sets `current_input` from either a `sw i0N Command OK` echo or the `Input: port N` line of a `read` reply.
+- `uart` on GPIO17/GPIO16 at 19200. A debug sequence receives each chunk, splits it into lines, records the time of every reply, and sets `current_input` from either a `sw i0N Command OK` echo or the `Input: port N` line of a `read` reply. Only those lines and `Command incorrect` rejections go to the `Last Switch Response` text sensor, and only when they differ from the last published value; the other `read` lines (output, mode, POD, firmware) are parsed but never published, so a quiet switch produces no state changes in HA between commands.
 - Four template `switch` entities, one per input, each on only while that input is active. `turn_on_action` runs the `select_input` script, which writes the `sw` command, records the time so the poll holds off for 3 s, and resends once with a log warning if `current_input` hasn't changed within 600 ms. There is no `turn_off_action`.
 - An `interval` sends `read` every 30 s unless a command went out in the last 3 s.
 - `Switch Responding`, a connectivity binary sensor, is false when no reply of any kind has arrived for 90 s.
